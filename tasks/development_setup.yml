@@ -1,0 +1,65 @@
+# https://pakreht.com/houdini/configure-vscode-for-python/
+---
+
+- name: Install pip module dependency
+  become: true
+  ansible.builtin.package:
+    name: python3-packaging
+    state: present
+
+- name: Get hython path
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.command:
+    cmd: hython -c "import sys; print(sys.executable)"
+  changed_when: false
+  register: hython_path
+
+- name: Create houdini dev virtualenv
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.command:
+    cmd: "{{ hython_path.stdout }} -m venv {{ houdini_venv_path }}"
+  args:
+    creates: "{{ houdini_venv_path }}/bin/activate"
+
+- name: Get exsitign pip
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.stat:
+    path: "{{ houdini_venv_path }}/bin/pip"
+  register: pip_path
+
+- name: Download get-pip.py
+  become: true
+  become_user: "{{ user }}"
+  when: not pip_path.stat.exists
+  ansible.builtin.get_url:
+    url: https://bootstrap.pypa.io/get-pip.py
+    dest: "{{ houdini_venv_path }}/get-pip.py"
+    mode: '0644'
+
+- name: Install pip in houdini dev virtualenv
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.command:
+    cmd: "{{ houdini_venv_path }}/bin/hython-bin {{ houdini_venv_path }}/get-pip.py"
+  args:
+    creates: "{{ houdini_venv_path }}/bin/pip"
+
+- name: Remove pip installer
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.file:
+    path: "{{ houdini_venv_path }}/get-pip.py"
+    state: "absent"
+
+- name: Install houdini dev packages
+  become: true
+  become_user: "{{ user }}"
+  loop: "{{ houdini_python_modules }}"
+  ansible.builtin.pip:
+    name: "{{ item }}"
+    virtualenv: "{{ houdini_venv_path }}"
+
+...

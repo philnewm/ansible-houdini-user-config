@@ -1,0 +1,38 @@
+---
+
+- name: Write environment variables
+  become: true
+  become_user: "{{ user }}"
+  loop: "{{ houdini_env | dict2items }}"
+  ansible.builtin.lineinfile:
+    path: "{{ user_home }}/houdini{{ houdini_version_short }}/houdini.env"
+    line: "{{ item.key }} = \"{{ item.value }}\""
+
+- name: Create houdini user config directory
+  ansible.builtin.file:
+    path: "{{ user_home }}/houdini{{ houdini_version_short }}/config"
+    state: "directory"
+    mode: "0755"
+
+- name: Copy 3DSceneColors.light
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.copy:
+    src: "/opt/hfs{{ houdini_version_full }}/houdini/config/3DSceneColors.light"
+    dest: "{{ user_home }}/houdini{{ houdini_version_short }}/config/3DSceneColors.light"
+    remote_src: true
+    mode: "0644"
+    force: false
+
+- name: Set viewport color settings
+  become: true
+  become_user: "{{ user }}"
+  loop: "{{ houdini_scenecolors_light }}"
+  ansible.builtin.lineinfile:
+    path: "{{ user_home }}/houdini{{ houdini_version_short }}/config/3DSceneColors.light"
+    regexp: '^{{ item.key }}:'
+    line: "{{ item.key }}:\t\t{{ item.value }}\t# {{ item.comment }}"
+    backrefs: false
+    mode: "0644"
+
+...

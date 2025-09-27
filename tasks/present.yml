@@ -7,8 +7,41 @@
     name: python-apt-common
     state: present
 
-# INFO This task may be obsolete for your use-case
 - name: Gather package facts
   ansible.builtin.package_facts:
+
+- name: Get houdini version
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ user_path }}"
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      houdini --version
+  args:
+    executable: /bin/bash
+  register: present_houdini_version
+  changed_when: false
+
+- name: Set houdini version
+  ansible.builtin.set_fact:
+    houdini_version_short: >-
+      {{ present_houdini_version.stdout.split(' ')[2].split('.')[0:2] | join('.') }}
+    houdini_version_full: "{{ present_houdini_version.stdout.split(' ')[2] }}"
+
+- name: Configure houdini
+  ansible.builtin.include_tasks:
+    file: config.yml
+
+- name: Add to gnome favorites
+  when: "'gnome-shell' in ansible_facts.packages and houdini_gnome_favorite"
+  ansible.builtin.include_tasks:
+    file: gnome_favorite.yml
+
+- name: Setup houdini dev env
+  when: houdini_pipeline_dev
+  ansible.builtin.include_tasks:
+    file: development_setup.yml
 
 ...

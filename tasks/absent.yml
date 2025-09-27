@@ -1,5 +1,72 @@
 ---
 
+- name: Get houdini version
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ user_path }}"
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      houdini --version
+  args:
+    executable: /bin/bash
+  register: present_houdini_version
+  changed_when: false
+
+- name: Set houdini version
+  ansible.builtin.set_fact:
+    houdini_version_short: >-
+      {{ present_houdini_version.stdout.split(' ')[2].split('.')[0:2] | join('.') }}
+    houdini_version_full: "{{ present_houdini_version.stdout.split(' ')[2] }}"
+
+- name: Remove user settings
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.file:
+    path: "{{ user_home }}/houdini{{ houdini_version_short }}"
+    state: "absent"
+
+- name: Remove python venv
+  become: true
+  become_user: "{{ user }}"
+  when: houdini_pipeline_dev
+  ansible.builtin.file:
+    path: "{{ houdini_venv_path }}"
+    state: absent
+
+- name: Remove from gnome favorites
+  when: "'gnome-shell' in ansible_facts.packages and houdini_gnome_favorite"
+  block:
+    - name: Set desktop launcher
+      ansible.builtin.set_fact:
+        houdini_desktop_launcher: "com.sidefx.houdini{{ houdini_version_full }}.desktop"
+
+    - name: Get current favorite apps
+      become: true
+      become_user: "{{ user }}"
+      community.general.dconf:
+        key: /org/gnome/shell/favorite-apps
+        state: read
+      register: current_favorites
+
+    - name: Clean favorites
+      ansible.builtin.set_fact:
+        gnome_favorites: "{{ current_favorites.value | from_yaml | default([], true) }}"
+
+    # TODO find a leaner way to do this
+    - name: Remove houdini from favorites
+      become: true
+      become_user: "{{ user }}"
+      when: houdini_desktop_launcher in gnome_favorites
+      community.general.dconf:
+        key: /org/gnome/shell/favorite-apps
+        value: >-
+          {{ (gnome_favorites | difference([houdini_desktop_launcher]) | to_json)
+            if (gnome_favorites | difference([houdini_desktop_launcher])) | length > 0
+            else '@as []' }}
+        state: present
+
 - name: Remove unused dependencies
   become: true
   ansible.builtin.package:

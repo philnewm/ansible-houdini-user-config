@@ -1,0 +1,34 @@
+---
+
+- name: Install dependencies
+  become: true
+  ansible.builtin.package:
+    name: python3-psutil
+    state: present
+
+- name: Set desktop launcher
+  ansible.builtin.set_fact:
+    houdini_desktop_launcher: "com.sidefx.houdini{{ houdini_version_full }}.desktop"
+
+- name: Get current favorite apps
+  become: true
+  become_user: "{{ user }}"
+  community.general.dconf:
+    key: /org/gnome/shell/favorite-apps
+    state: read
+  register: current_favorites
+
+- name: Clean favorites
+  ansible.builtin.set_fact:
+    gnome_favorites: "{{ current_favorites.value | from_yaml | default([], true) }}"
+
+- name: Add houdini to favorites
+  become: true
+  become_user: "{{ user }}"
+  when: houdini_desktop_launcher not in gnome_favorites
+  community.general.dconf:
+    key: /org/gnome/shell/favorite-apps
+    value: "{{ gnome_favorites + [houdini_desktop_launcher] }}"
+    state: present
+
+...

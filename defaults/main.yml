@@ -1,5 +1,38 @@
 ---
 
 state: present
+user: "vagrant"
+
+houdini_gnome_favorite: true
+user_path: "/usr/local/bin:/usr/local/sbin"
+user_home: "/home/{{ user }}"
+
+houdini_venv_path: "/home/{{ user }}/python_venv/houdini_venv"
+houdini_pipeline_dev: true
+
+houdini_env:
+  "HOUDINI_NO_SPLASH": 1
+  "HOUDINI_NO_START_PAGE_SPLASH": 0
+  "HOUDINI_VULKAN_VIEWER": 1
+  "HOUDINI_ANONYMOUS_STATISTICS": 0
+  "HOUDINI_ANONYMOUS_STATISTICS_UPLOAD_ERRORS": 0
+  "HOUDINI_SPLASH_MESSAGE": ""
+
+houdini_scenecolors_light:
+  - key: "BackgroundColor"
+    value: "0.20 0.01 0.25"
+    comment: "background color"
+  - key: "BackgroundBottomColor"
+    value: "0.04 0.18 0.23"
+    comment: "background color at bottom of view"
+  - key: "GridColor"
+    value: "0.25 0.30 0.25"
+    comment: "reference plane"
+  - key: "GridLineAlpha"
+    value: "ALPHA .45"
+    comment: "alpha of ref plane grid lines"
+
+houdini_python_modules:
+  - types-houdini
 
 ...

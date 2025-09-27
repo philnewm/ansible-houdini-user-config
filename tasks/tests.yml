@@ -1,3 +1,101 @@
 ---
 
+- name: Get houdini version
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ user_path }}"
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      houdini --version
+  args:
+    executable: /bin/bash
+  register: present_houdini_version
+  changed_when: false
+
+- name: Set houdini version
+  ansible.builtin.set_fact:
+    houdini_version_short: >-
+      {{ present_houdini_version.stdout.split(' ')[2].split('.')[0:2] | join('.') }}
+    houdini_version_full: "{{ present_houdini_version.stdout.split(' ')[2] }}"
+
+- name: Get houdini env file
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.stat:
+    path: "{{ user_home }}/houdini{{ houdini_version_short }}/houdini.env"
+  register: houdini_env_result
+
+- name: Test usersetup
+  ansible.builtin.assert:
+    that:
+      - houdini_env_result.stat.exists
+    fail_msg: "Failed to find 'houdini.env' in .{{ user_home }}/houdini{{ houdini_version_short }}."
+    quiet: true
+
+- name: Check for gnome favorite
+  when: "'gnome-shell' in ansible_facts.packages and houdini_gnome_favorite"
+  block:
+    - name: Set desktop launcher
+      ansible.builtin.set_fact:
+        houdini_desktop_launcher: "com.sidefx.houdini{{ houdini_version_full }}.desktop"
+
+    - name: Get current favorite apps
+      become: true
+      become_user: "{{ user }}"
+      community.general.dconf:
+        key: /org/gnome/shell/favorite-apps
+        state: read
+      register: current_favorites
+
+    - name: Clean favorites
+      ansible.builtin.set_fact:
+        gnome_favorites: "{{ current_favorites.value | from_yaml | default([], true) }}"
+
+    - name: Test gnome favorite
+      ansible.builtin.assert:
+        that:
+          - houdini_desktop_launcher in gnome_favorites
+        fail_msg: "Failed to find '{{ houdini_desktop_launcher }}' in gnome favorites"
+        quiet: true
+
+- name: Test development setup
+  when: houdini_pipeline_dev
+  block:
+    - name: Check if houdini python virtual environment exists
+      become: true
+      become_user: "{{ user }}"
+      ansible.builtin.stat:
+        path: "{{ houdini_venv_path }}"
+      register: venv_stat
+
+    - name: Assert that virtual environment directory exists
+      ansible.builtin.assert:
+        that:
+          - venv_stat.stat.exists
+          - venv_stat.stat.isdir
+        fail_msg: "Virtual environment directory does not exist at {{ houdini_venv_path }}"
+        quiet: true
+
+    - name: Get list of installed python packages from venv
+      become: true
+      become_user: "{{ user }}"
+      ansible.builtin.command:
+        cmd: "{{ houdini_venv_path }}/bin/pip list --format=json"
+      register: pip_list
+      changed_when: false
+
+    - name: Parse installed packages
+      ansible.builtin.set_fact:
+        installed_packages: "{{ pip_list.stdout | from_json | map(attribute='name') | list }}"
+
+    - name: Assert expected Python packages are installed
+      loop: "{{ houdini_python_modules }}"
+      ansible.builtin.assert:
+        that:
+          - (item.split('==')[0]) in installed_packages
+        fail_msg: "Failed to find python module {{ item }} in environment '{{ houdini_venv_path }}'"
+        quiet: true
+
 ...
