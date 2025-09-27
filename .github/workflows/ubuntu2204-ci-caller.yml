@@ -29,6 +29,6 @@ jobs:
     secrets:
       env_secrets: |
         SIDEFX_CLIENT_ID=${{ secrets.SIDEFX_CLIENT_ID }}
-        SIDEFX_CLIENT_SECRET_KEY=${{ secrets.SIDEFX_CLIENT_SECRET }}
+        SIDEFX_CLIENT_SECRET_KEY=${{ secrets.SIDEFX_CLIENT_SECRET_KEY }}
 
 ...
