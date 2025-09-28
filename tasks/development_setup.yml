@@ -10,6 +10,8 @@
 - name: Get hython path
   become: true
   become_user: "{{ user }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ user_path }}"
   ansible.builtin.command:
     cmd: hython -c "import sys; print(sys.executable)"
   changed_when: false
@@ -23,7 +25,7 @@
   args:
     creates: "{{ houdini_venv_path }}/bin/activate"
 
-- name: Get exsitign pip
+- name: Get existing pip
   become: true
   become_user: "{{ user }}"
   ansible.builtin.stat:
@@ -39,7 +41,7 @@
     dest: "{{ houdini_venv_path }}/get-pip.py"
     mode: '0644'
 
-- name: Install pip in houdini dev virtualenv
+- name: Install pip in houdini dev virtual env
   become: true
   become_user: "{{ user }}"
   ansible.builtin.command:
