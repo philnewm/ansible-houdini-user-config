@@ -1,40 +1,5 @@
 ---
 
-- name: Get houdini version
-  become: true
-  become_user: "{{ user }}"
-  environment:
-    PATH: "{{ ansible_env.PATH }}:{{ user_path }}"
-  ansible.builtin.shell:
-    cmd: |
-      set -o pipefail
-      houdini --version
-  args:
-    executable: /bin/bash
-  register: present_houdini_version
-  changed_when: false
-
-- name: Set houdini version
-  ansible.builtin.set_fact:
-    houdini_version_short: >-
-      {{ present_houdini_version.stdout.split(' ')[2].split('.')[0:2] | join('.') }}
-    houdini_version_full: "{{ present_houdini_version.stdout.split(' ')[2] }}"
-
-- name: Remove user settings
-  become: true
-  become_user: "{{ user }}"
-  ansible.builtin.file:
-    path: "{{ user_home }}/houdini{{ houdini_version_short }}"
-    state: "absent"
-
-- name: Remove python venv
-  become: true
-  become_user: "{{ user }}"
-  when: houdini_pipeline_dev
-  ansible.builtin.file:
-    path: "{{ houdini_venv_path }}"
-    state: absent
-
 - name: Remove from gnome favorites
   when: "'gnome-shell' in ansible_facts.packages and houdini_gnome_favorite"
   block:
@@ -66,10 +31,5 @@
             if (gnome_favorites | difference([houdini_desktop_launcher])) | length > 0
             else '@as []' }}
         state: present
-
-- name: Remove unused dependencies
-  become: true
-  ansible.builtin.package:
-    autoremove: true
 
 ...
