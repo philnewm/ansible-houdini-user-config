@@ -9,6 +9,8 @@
     line: "{{ item.key }} = \"{{ item.value }}\""
 
 - name: Create houdini user config directory
+  become: true
+  become_user: "{{ user }}"
   ansible.builtin.file:
     path: "{{ user_home }}/houdini{{ houdini_version_short }}/config"
     state: "directory"
