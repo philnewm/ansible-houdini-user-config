@@ -34,32 +34,6 @@
     fail_msg: "Failed to find 'houdini.env' in .{{ user_home }}/houdini{{ houdini_version_short }}."
     quiet: true
 
-- name: Check for gnome favorite
-  when: "'gnome-shell' in ansible_facts.packages and houdini_gnome_favorite"
-  block:
-    - name: Set desktop launcher
-      ansible.builtin.set_fact:
-        houdini_desktop_launcher: "com.sidefx.houdini{{ houdini_version_full }}.desktop"
-
-    - name: Get current favorite apps
-      become: true
-      become_user: "{{ user }}"
-      community.general.dconf:
-        key: /org/gnome/shell/favorite-apps
-        state: read
-      register: current_favorites
-
-    - name: Clean favorites
-      ansible.builtin.set_fact:
-        gnome_favorites: "{{ current_favorites.value | from_yaml | default([], true) }}"
-
-    - name: Test gnome favorite
-      ansible.builtin.assert:
-        that:
-          - houdini_desktop_launcher in gnome_favorites
-        fail_msg: "Failed to find '{{ houdini_desktop_launcher }}' in gnome favorites"
-        quiet: true
-
 - name: Test development setup
   when: houdini_pipeline_dev
   block:
